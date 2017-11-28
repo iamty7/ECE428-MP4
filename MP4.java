@@ -41,7 +41,7 @@ import java.util.concurrent.ConcurrentHashMap.KeySetView;
  * MP2 - Distributed Group Membership
  */
 
-public class DGM {
+public class MP4 {
 
 	/*
 	 * Node in the membership list and messages
@@ -76,6 +76,10 @@ public class DGM {
 			this.timestamp = timestamp;
 		}
 	}
+	
+	
+	
+	
 
 	/*
 	 * Thread for heartbeating
@@ -326,11 +330,28 @@ public class DGM {
 		}
 
 	}
+	
+	private class MasterThread extends Thread {
+
+		@Override
+		public void run() {
+			
+		}
+	}
+	
+	private class WorkerThread extends Thread {
+
+		@Override
+		public void run() {
+			
+		}
+	}
+	
 
 	/*
 	 * Constructor of Class DGM
 	 */
-	public DGM() {
+	public MP4() {
 		// implemented in the initializeDGM method
 	}
 
@@ -365,8 +386,8 @@ public class DGM {
 
 	public static void main(String[] args) {
 
-		DGM dgm = new DGM();
-		dgm.start();
+		MP4 mp4 = new MP4();
+		mp4.start();
 	}
 
 	/*

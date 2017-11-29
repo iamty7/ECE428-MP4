@@ -13,6 +13,9 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.ConnectException;
@@ -32,10 +35,14 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
+
+import sun.reflect.generics.tree.Tree;
+
 
 /*
  * MP2 - Distributed Group Membership
@@ -76,10 +83,6 @@ public class MP4 {
 			this.timestamp = timestamp;
 		}
 	}
-	
-	
-	
-	
 
 	/*
 	 * Thread for heartbeating
@@ -191,10 +194,9 @@ public class MP4 {
 							}
 						}
 
-						
 					}
 					Thread.currentThread().sleep(1000);
-					
+
 				}
 			} catch (InterruptedException e) {
 
@@ -330,23 +332,218 @@ public class MP4 {
 		}
 
 	}
-	
-	private class MasterThread extends Thread {
 
+	private class PregelMessageThread extends Thread {
+
+		private int numWorkers;
+		private int reportCnt;
+		private List<String> workerIDList;
+		Message masterMessage;
 		@Override
 		public void run() {
+
+			try {
+				ServerSocket server = new ServerSocket(PREGEL_PORT);
+
+				while (true) {
+					Socket socket = server.accept();
+					ObjectInputStream sin = new ObjectInputStream(socket.getInputStream());
+					Message message = (Message) sin.readObject();
+					switch (message.getMessageType()) {
+					case "Start a task":
+						masterMessage = message;
+						masterMessage.setMessageType("Start workers");
+						masterMessage.setMasterHostname(getHostName());
+						startTask();
+						break;
+					case "Start workers":
+						startWorkers(message);
+						break;
+					case "workerReport":
+						workerReport(message);
+						break;
+					case "nextRound":
+						nextRound(message);
+						break;
+					case "neighborMessage":
+						neighborMessage(message);
+						break;
+
+					default:
+						break;
+					}
+
+					socket.close();
+				}
+			} catch (IOException | ClassNotFoundException e) {
+				e.printStackTrace();
+			}
+
+		}
+		
+		public void neighborMessage(Message message) {
+			if(vertexHashMap.containsKey(message.getTargetVertexID())){
+				Vertex vertex = vertexHashMap.get(message.getTargetVertexID());
+				vertex.addMessage(message);
+			}
+			else
+				System.out.println("============Target vertex does not exist!!!!");
 			
 		}
+
+		public void nextRound(Message message) {
+			workerThread.interrupt();
+			
+		}
+
+		public void workerReport(Message message) {
+			reportCnt++;
+			if(reportCnt==numWorkers){
+				reportCnt=0;
+				for(String dest:workerIDList){
+					sendMessageTo(dest, new Message("nextRound"));
+				}
+			}
+		}
+
+		public void startWorkers(Message message) {
+			if (workerThread != null) {
+				((WorkerThread) workerThread).setStop(true);
+				workerThread.interrupt();
+			}
+			workerThread = new WorkerThread(message);
+			vertexHashMap.clear();
+			workerThread.start();
+
+		}
+
+		public void startTask() {
+			numWorkers = 0;
+			reportCnt = 0;
+			workerIDList = new ArrayList<String>();
+			synchronized (membershipList) {
+				for (Node node : membershipList) {
+					if (node != null) {
+						if (!(node.hostName.equals("fa17-cs425-g15-01.cs.illinois.edu")
+								|| node.hostName.equals("fa17-cs425-g15-02.cs.illinois.edu"))) {
+							workerIDList.add(node.hostName);
+							numWorkers++;
+				
+						}
+					}
+				}
+			}
+			for(String dest:workerIDList){
+				sendMessageTo(dest, masterMessage);
+			}
+			
+
+		}
+
+
 	}
-	
+
 	private class WorkerThread extends Thread {
+		private boolean stop;
+		private Message message;
+		private List workerIDList;
+		private int numWorker;
+		private boolean changed = false;
+		public WorkerThread(Message message) {
+			super();
+			this.message = message;
+			stop = false;
+			workerIDList = new ArrayList<String>();
+			numWorker = 0;
+
+		}
+
+		public void setStop(boolean stop) {
+			this.stop = stop;
+		}
 
 		@Override
 		public void run() {
 			
+			getFile(message.getFilename(), "Input" + message.getFilename());
+			if(stop)
+				return;
+			createWorkerID();
+			readFile("Input" + message.getFilename());
+			if(stop)
+				return;
+			while(!stop){
+				for(Vertex vertex:vertexHashMap.values()){
+					if(vertex.compute())
+						changed = true;
+					if(stop)
+						return;
+				}
+				sendMessageTo(message.getMasterHostname(), new Message("workerReport", changed));
+				changed = false;
+				try {
+					Thread.currentThread().sleep(Long.MAX_VALUE);
+				} catch (InterruptedException e) {
+					if(stop)
+						return;
+				}
+			}
+			
+		
+			
 		}
-	}
+		
+		public void createWorkerID() {
+			synchronized (membershipList) {
+				for (Node node : membershipList) {
+					if (node != null) {
+						if (!(node.hostName.equals("fa17-cs425-g15-01.cs.illinois.edu")
+								|| node.hostName.equals("fa17-cs425-g15-02.cs.illinois.edu"))) {
+							workerIDList.add(node.hostName);
+							numWorker++;
+				
+						}
+					}
+				}
+			}
+		}
+
+		// read input data into vertex hashmap
+		public void readFile(String filename) {
+			try {
+				Scanner fout = new Scanner(new File(filename));
+				while(fout.hasNextInt()){
+					int vertexID = fout.nextInt();
+					if(!workerIDList.get(vertexID%numWorker).equals(getHostName())){
+						fout.nextInt();
+						continue;
+					}
+					if(!vertexHashMap.containsKey(vertexID)){
 	
+						Vertex vertex = null;
+	
+						if(message.getApp().equals("PageRank"))
+							vertex = new PageRankVertex(vertexID, 0.0);
+						else if(message.getApp().equals("SSSP")){
+							// !!! vertex = new SSSPVertex(vertexID, 0.0);
+						}
+						vertex.addOutEdge(new Edge(fout.nextInt()));
+						vertexHashMap.put(vertexID, vertex);
+					}
+					else{
+						Vertex vertex = vertexHashMap.get(vertexID);
+						vertex.addOutEdge(new Edge(fout.nextInt()));
+					}
+					if(stop)
+						return;
+				}
+				fout.close();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
 
 	/*
 	 * Constructor of Class DGM
@@ -354,6 +551,22 @@ public class MP4 {
 	public MP4() {
 		// implemented in the initializeDGM method
 	}
+
+	// send pregel message
+	private void sendMessageTo(String hostName, Message message) {
+		try {
+			Socket socket = new Socket(hostName, PREGEL_PORT);
+			ObjectOutput sout = new ObjectOutputStream(socket.getOutputStream());
+			sout.writeObject(message);
+			sout.close();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	
 
 	// message type
 	private final int HEARTBEAT = 0;
@@ -367,9 +580,12 @@ public class MP4 {
 
 	private final int CLIENT_PORT = 8300;
 	private final int SERVER_PORT = 8399;
+	private final int PREGEL_PORT = 9000;
 
 	// member-variables
 	private boolean is_introducer;
+
+	boolean masterDead = false;
 	private Node[] membershipList;
 	private Node thisNode;
 	private List<Node> successors;
@@ -378,11 +594,16 @@ public class MP4 {
 
 	private boolean in_group;
 	private boolean goingToLeave;
+
 	private Thread heartBeatThread;
 	private Thread messageHandlerThread;
 	private Thread failureDetectorThread;
 	private Thread fileTransferThread;
+
+	private Thread workerThread;
+	private Thread pregelMessageThread;
 	private ConcurrentHashMap<Integer, Long> heartbeatCnt;
+	private HashMap<Integer,Vertex> vertexHashMap;
 
 	public static void main(String[] args) {
 
@@ -572,7 +793,7 @@ public class MP4 {
 								conti = new Boolean(true);
 								socket_out.println("Continue");
 							}
-						} else{
+						} else {
 							socket_out.println("Continue");
 						}
 					}
@@ -733,6 +954,7 @@ public class MP4 {
 			messageHandlerThread.start();
 			failureDetectorThread.start();
 			fileTransferThread.start();
+			pregelMessageThread.start();
 		}
 
 		if (!is_introducer) {
@@ -804,6 +1026,9 @@ public class MP4 {
 		messageHandlerThread = new Thread(new MessageHandlerThread());
 		failureDetectorThread = new Thread(new FailureDetectorThread());
 		fileTransferThread = new Thread(new FileTransferThread());
+		pregelMessageThread = new Thread(new PregelMessageThread());
+		workerThread = null;
+		vertexHashMap = new HashMap<Integer, Vertex>();
 
 		membershipList[thisNode.hashID] = thisNode;
 	}
@@ -1020,8 +1245,12 @@ public class MP4 {
 	 * Mark a node as failure and the send the failure message to its successors
 	 */
 	public void markAsFailure(Integer hashID) {
+		
 		if (membershipList[hashID] != null) {
 			Node node = membershipList[hashID];
+			if(node.hostName.equals("fa17-cs425-g15-01.cs.illinois.edu"))
+				masterDead = true;
+			
 			synchronized (heartbeatCnt) {
 				heartbeatCnt.remove(hashID);
 			}
@@ -1042,6 +1271,18 @@ public class MP4 {
 					}
 				}
 			}
+			
+			if(getHostName().equals("fa17-cs425-g15-01.cs.illinois.edu"))
+				((PregelMessageThread)pregelMessageThread).startTask();
+			else if(getHostName().equals("fa17-cs425-g15-02.cs.illinois.edu")){
+				if(masterDead)
+					((PregelMessageThread)pregelMessageThread).startTask();
+			}
+			else{
+				((WorkerThread)workerThread).setStop(true);
+				workerThread.interrupt();
+			}
+				
 
 			writeLogs("Failure:", node);
 		}

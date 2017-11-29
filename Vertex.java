@@ -1,9 +1,11 @@
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
-public class Vertex<VertexID, VertexValue> {
+public class Vertex<VertexValue, MessageValue, EdgeValue> {
 	
-	private VertexID id;
+	private int id;
 	
 	private VertexValue value;
 	
@@ -11,17 +13,17 @@ public class Vertex<VertexID, VertexValue> {
 	
 	private List<Edge> outEdgeList;
 	
-	private List<Message> messageList;
+	private Queue<Message> messageList;
 	
-	public Vertex(VertexID id, VertexValue value) {
+	public Vertex(int id, VertexValue value) {
 		this.id = id;
 		this.value = value;
 		this.supersteps = 0;
 		this.outEdgeList = new ArrayList<>();
-		this.messageList = new ArrayList<>();
+		this.messageList = new LinkedList<>();
 	}
 	
-	public VertexID getVertex_id() {
+	public int getVertex_id() {
 		return this.id;
 	}
 	
@@ -45,18 +47,28 @@ public class Vertex<VertexID, VertexValue> {
 		this.outEdgeList.add(edge);
 	}
 	
+	public void addMessage(Message message){
+		this.messageList.offer(message);
+	}
+	
 
+	
 	
 	// abstract methods
 	
-	public void compute(List messageList){
+	public void sendMessageToNei(int target_vertex_id, MessageValue message_value){
 		
 	}
-	
-	
-	
-	public static void main(String[] args) {
 
+
+	public boolean compute(){
+		return false;
 	}
-
+	
+	
+	
+//	public static void main(String[] args) {
+//	
+//	}
+	
 }

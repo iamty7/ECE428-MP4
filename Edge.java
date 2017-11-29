@@ -2,12 +2,17 @@
 public class Edge<EdgeValue,VertexID, VertexValue> {
 	
 	
-	VertexID source;
+	//VertexID source;
 	VertexID tagert;
 	EdgeValue value;
 	
-	public Edge(VertexID source, VertexID target, EdgeValue value) {
-		this.source = source;
+	public Edge(VertexID target) {
+		//this.source = source;
+		this.tagert = target;
+	}
+	
+	public Edge(VertexID target, EdgeValue value) {
+		//this.source = source;
 		this.tagert = target;
 		this.value = value;
 	}

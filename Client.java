@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Scanner;
 
+
 public class Client {
 	
 	private final int PREGEL_PORT = 9000;
@@ -37,6 +38,8 @@ public class Client {
 	
 	public static void main(String[] args) {
 
+		PageRankVertex pageRankVertex;
+		
 		Client client = new Client();
 		client.run();
 

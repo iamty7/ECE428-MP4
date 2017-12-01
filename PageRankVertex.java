@@ -1,11 +1,12 @@
 import java.io.IOException;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.List;
 
-public class PageRankVertex extends Vertex<Double, Double, Void> {
+public class PageRankVertex extends Vertex<Double, Double, Void>  implements Serializable, Comparable<PageRankVertex>{
 
 	public PageRankVertex(int vertex_id, Double vertex_value) {
 		super(vertex_id, vertex_value);
@@ -14,7 +15,7 @@ public class PageRankVertex extends Vertex<Double, Double, Void> {
 	@Override
 	public boolean compute(List<String> workerIDList) {
 		boolean changed = false;
-		if (supersteps >= 1) {
+		if (supersteps >= 1 && supersteps < 10) {
 			Message<Double> message;
 			double sum = 0.0;
 			while (true) {
@@ -27,10 +28,11 @@ public class PageRankVertex extends Vertex<Double, Double, Void> {
 					messageList.poll();
 				}
 			}
-			value = 0.15 / Vertex.numVertices + 0.85 * sum;
+			if(changed)
+				value = 0.15 / Vertex.numVertices + 0.85 * sum;
 
 		}
-		if (supersteps < 20) {
+		if (supersteps < 10) {
 			int n = outEdgeList.size();
 			for (Edge edge : outEdgeList) {
 				try {
@@ -49,15 +51,25 @@ public class PageRankVertex extends Vertex<Double, Double, Void> {
 		}
 		supersteps++;
 
+		if(supersteps==1)
+			return true;
 		return changed;
 
 	}
 
-	@Override
-	public int compareTo(Vertex compareVertex) {
-		double compareValue = ((PageRankVertex) compareVertex).value;
 
-		return (int) (compareValue - this.value);
+
+	@Override
+	public int compareTo(PageRankVertex o) {
+
+		double compareValue = o.value;
+
+		if(value < compareValue)
+			return 1;
+		else if(value > compareValue)
+			return -1;
+		else
+			return 0;
 	}
 
 }

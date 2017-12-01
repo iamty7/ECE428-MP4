@@ -37,6 +37,7 @@ public class Message<MessageValue> implements Serializable {
 		this.messageType = messageType;
 		this.value = value;
 		this.targetVertexID = targetVertex;
+		this.superstep = superstep;
 	}
 
 	// results

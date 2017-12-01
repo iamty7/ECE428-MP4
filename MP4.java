@@ -43,7 +43,6 @@ import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
 
-import sun.reflect.generics.tree.Tree;
 
 /*
  * MP2 - Distributed Group Membership
@@ -341,7 +340,8 @@ public class MP4 {
 		private int notChangedCnt;
 		private List<String> workerIDList;
 		private int numResultsReceived;
-		private List<Vertex> results;
+		private List<PageRankVertex> PGresults;
+		//private List<PageRankVertex> PGresults;
 		Message masterMessage;
 
 		@Override
@@ -392,10 +392,14 @@ public class MP4 {
 		}
 
 		private void mergeResults(Message message) {
-			results.addAll(message.getData());
+			System.out.println("===============results from worker received");
+			
+			PGresults.addAll(message.getData());
 
 			numResultsReceived++;
 			if (numResultsReceived == numWorkers) {
+				
+				System.out.println("=========All results received");
 				outputToClient();
 			}
 		}
@@ -403,11 +407,27 @@ public class MP4 {
 		private void outputToClient() {
 
 			if (masterMessage.getApp().equals("PageRank")) {
-				Collections.sort(results);
-				sendMessageTo("fa17-cs425-g15-01.cs.illinois.edu",
-						new Message("final results", results.subList(0, 25)));
-			} else
-				sendMessageTo("fa17-cs425-g15-01.cs.illinois.edu", new Message("final results", results));
+
+				try {
+					FileOutputStream fout = new FileOutputStream(new File("result.txt"));
+					PrintWriter dout = new PrintWriter(fout);
+					for(Vertex vertex:PGresults){
+						dout.println(vertex.id + "  " + vertex.value);
+					}
+					fout.close();
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				
+				
+				Collections.sort(PGresults);
+				sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu",
+						new Message("final results", new ArrayList<PageRankVertex>(PGresults.subList(0, 25))));
+			} else{
+				//sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu", new Message("final results", results));
+			}
 		}
 
 		private void dataToMaster() {
@@ -415,51 +435,78 @@ public class MP4 {
 			workerThread.interrupt();
 			workerThread = null;
 
+			try {
+				FileOutputStream fout = new FileOutputStream(new File("result.txt"));
+				PrintWriter dout = new PrintWriter(fout);
+				for(Vertex vertex:vertexHashMap.values()){
+					dout.println(vertex.id + "  " + vertex.value);
+				}
+				fout.close();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
 			List<Vertex> data = new ArrayList<Vertex>();
 			for (Vertex vertex : vertexHashMap.values()) {
 				vertex.clearMessageList();
 				vertex.clearOutEdgeList();
 				data.add(vertex);
 			}
+			System.out.println("==========sending results to the master");
 			sendMessageTo(masterMessage.getMasterHostname(), new Message("results", data));
 
 		}
 
 		public void neighborMessage(Message message) {
-			if (vertexHashMap.containsKey(message.getTargetVertexID())) {
-				Vertex vertex = vertexHashMap.get(message.getTargetVertexID());
-				vertex.addMessage(message);
-			} else {
-
-				Vertex vertex;
-				if (masterMessage.getApp().equals("PageRank"))
-					vertex = new PageRankVertex(message.getTargetVertexID(), 0.0);
-				else if (masterMessage.getApp().equals("SSSP")) {
-					// !!! vertex = new SSSPVertex(message.getTargetVertexID(),
-					// 0.0);
-				}
-			}
+//			if (vertexHashMap.containsKey(message.getTargetVertexID())) {
+//				Vertex vertex = vertexHashMap.get(message.getTargetVertexID());
+//				vertex.addMessage(message);
+//			} else {
+//
+//				Vertex vertex = null;
+//				
+//				
+//				if (masterMessage.getApp().equals("PageRank"))
+//					vertex = new PageRankVertex(message.getTargetVertexID(), 1.0 / Vertex.numVertices);
+//				
+//				else if (masterMessage.getApp().equals("SSSP")) {
+//					// !!! vertex = new SSSPVertex(message.getTargetVertexID(),
+//					// 0.0);
+//				}
+//				vertex.supersteps = message.getSuperstep() - 1;
+//				vertex.addMessage(message);
+//				vertexHashMap.put(message.getTargetVertexID(), vertex);
+//			}
+			Vertex vertex = vertexHashMap.get(message.getTargetVertexID());
+			vertex.addMessage(message);
 
 		}
 
 		public void nextRound(Message message) {
+			System.out.println("==================receive next round command");
 			workerThread.interrupt();
 
 		}
 
 		public void workerReport(Message message) {
+			
+			System.out.println("==============worker report received");
 			reportCnt++;
 			if (!message.getChangedStatus())
 				notChangedCnt++;
 			if (reportCnt == numWorkers) {
 				if (numWorkers == notChangedCnt) {
-					System.out.println("task accomplished!!!");
+					System.out.println("=====================task accomplished!!!");
 					for (String dest : workerIDList) {
 						sendMessageTo(dest, new Message("result request"));
 					}
 					return;
 				}
-
+				reportCnt = 0;
+				notChangedCnt = 0;
+				System.out.println("====================asking workers to do the next round");
 				for (String dest : workerIDList) {
 					sendMessageTo(dest, new Message("nextRound"));
 				}
@@ -471,6 +518,7 @@ public class MP4 {
 				((WorkerThread) workerThread).setStop(true);
 				workerThread.interrupt();
 			}
+			masterMessage = message;
 			workerThread = new WorkerThread(message);
 			vertexHashMap.clear();
 			workerThread.start();
@@ -483,7 +531,8 @@ public class MP4 {
 			notChangedCnt = 0;
 			numResultsReceived = 0;
 			workerIDList = new ArrayList<String>();
-			results = new ArrayList<Vertex>();
+			PGresults = new ArrayList<PageRankVertex>();
+			System.out.println("========sending start worker command");
 			synchronized (membershipList) {
 				for (Node node : membershipList) {
 					if (node != null) {
@@ -496,11 +545,12 @@ public class MP4 {
 					}
 				}
 			}
+			System.out.println("========sending start worker command compelete");
 
+			getFile(masterMessage.getFilename(), "Input" + masterMessage.getFilename());
 			HashSet<Integer> IDSet = new HashSet<>();
-
 			try {
-				Scanner fout = new Scanner(new File(masterMessage.getFilename()));
+				Scanner fout = new Scanner(new File("Input" + masterMessage.getFilename()));
 				while (fout.hasNextInt()) {
 					int id = fout.nextInt();
 					if (!IDSet.contains(id))
@@ -508,7 +558,7 @@ public class MP4 {
 				}
 				fout.close();
 				masterMessage.setNumVertices(IDSet.size());
-
+				System.out.println("Vertex num: " + IDSet.size());
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 			}
@@ -551,15 +601,33 @@ public class MP4 {
 			readFile("Input" + message.getFilename());
 			if (stop)
 				return;
+			
 			while (!stop) {
-				for (Vertex vertex : vertexHashMap.values()) {
-					if (vertex.compute(workerIDList))
-						changed = true;
-					if (stop)
-						return;
+
+				try {
+					Thread.currentThread().sleep(500);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
 				}
+				synchronized (vertexHashMap) {
+					int i = 0;
+					for (Vertex vertex : vertexHashMap.values()) {
+						
+						if (vertex.compute(workerIDList))
+							changed = true;
+						if (stop)
+							return;
+						
+						if(i==0)
+							System.out.println(vertex.id + "\t" + vertex.value);
+						i++;
+					}
+				}
+			
+				System.out.println("========sending report to master");
 				sendMessageTo(message.getMasterHostname(), new Message("workerReport", changed));
 				changed = false;
+				
 				try {
 					Thread.currentThread().sleep(Long.MAX_VALUE);
 				} catch (InterruptedException e) {
@@ -587,30 +655,46 @@ public class MP4 {
 
 		// read input data into vertex hashmap
 		public void readFile(String filename) {
+			
+			System.out.println("========Worker starting reading file");
 			try {
 				Vertex.numVertices = message.getNumVertices();
 				Scanner fout = new Scanner(new File(filename));
 				while (fout.hasNextInt()) {
 					int vertexID = fout.nextInt();
-					if (!workerIDList.get(vertexID % numWorker).equals(getHostName())) {
-						fout.nextInt();
-						continue;
-					}
-					if (!vertexHashMap.containsKey(vertexID)) {
+					int nextID = fout.nextInt();
+					if (workerIDList.get(vertexID % numWorker).equals(getHostName())) {
+						if (!vertexHashMap.containsKey(vertexID)) {
 
-						Vertex vertex = null;
+							Vertex vertex = null;
 
-						if (message.getApp().equals("PageRank"))
-							vertex = new PageRankVertex(vertexID, 1.0 / message.getNumVertices());
-						else if (message.getApp().equals("SSSP")) {
-							// !!! vertex = new SSSPVertex(vertexID, 0.0);
+							if (message.getApp().equals("PageRank"))
+								vertex = new PageRankVertex(vertexID, 1.0);
+							else if (message.getApp().equals("SSSP")) {
+								// !!! vertex = new SSSPVertex(vertexID, 0.0);
+							}
+							vertex.addOutEdge(new Edge(nextID));
+							vertexHashMap.put(vertexID, vertex);
+						} else {
+							Vertex vertex = vertexHashMap.get(vertexID);
+							vertex.addOutEdge(new Edge(nextID));
 						}
-						vertex.addOutEdge(new Edge(fout.nextInt()));
-						vertexHashMap.put(vertexID, vertex);
-					} else {
-						Vertex vertex = vertexHashMap.get(vertexID);
-						vertex.addOutEdge(new Edge(fout.nextInt()));
+
 					}
+					if (workerIDList.get(nextID % numWorker).equals(getHostName())) {
+						if (!vertexHashMap.containsKey(nextID)) {
+
+							Vertex vertex = null;
+
+							if (message.getApp().equals("PageRank"))
+								vertex = new PageRankVertex(nextID, 1.0);
+							else if (message.getApp().equals("SSSP")) {
+								// !!! vertex = new SSSPVertex(nextID, 0.0);
+							}
+							vertexHashMap.put(nextID, vertex);
+						}
+					}
+					
 					if (stop)
 						return;
 				}
@@ -618,11 +702,10 @@ public class MP4 {
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 			}
+			
+			System.out.println("========Worker reading file complete");
 		}
 
-		public int getNumVertices() {
-			return message.getNumVertices();
-		}
 
 	}
 
@@ -683,7 +766,7 @@ public class MP4 {
 	private Thread workerThread;
 	private Thread pregelMessageThread;
 	private ConcurrentHashMap<Integer, Long> heartbeatCnt;
-	private HashMap<Integer, Vertex> vertexHashMap;
+	private ConcurrentHashMap<Integer, Vertex> vertexHashMap;
 
 	public static void main(String[] args) {
 
@@ -1108,7 +1191,7 @@ public class MP4 {
 		fileTransferThread = new Thread(new FileTransferThread());
 		pregelMessageThread = new Thread(new PregelMessageThread());
 		workerThread = null;
-		vertexHashMap = new HashMap<Integer, Vertex>();
+		vertexHashMap = new ConcurrentHashMap<Integer, Vertex>();
 
 		membershipList[thisNode.hashID] = thisNode;
 	}

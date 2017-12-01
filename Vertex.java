@@ -1,9 +1,10 @@
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-public class Vertex<VertexValue, MessageValue, EdgeValue> implements Comparable<Vertex> {
+public class Vertex<VertexValue, MessageValue, EdgeValue> implements Serializable {
 
 	protected int id;
 
@@ -72,10 +73,12 @@ public class Vertex<VertexValue, MessageValue, EdgeValue> implements Comparable<
 		return false;
 	}
 
-	@Override
-	public int compareTo(Vertex compareVertex) {
-		return 1;
-	}
+
+//	@Override
+//	public int compareTo(Object o) {
+//		
+//		return 0;
+//	}
 
 	// public static void main(String[] args) {
 	//

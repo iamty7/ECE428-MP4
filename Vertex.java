@@ -3,18 +3,20 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-public class Vertex<VertexValue, MessageValue, EdgeValue> {
-	
-	private int id;
-	
-	private VertexValue value;
-	
-	private int supersteps;
-	
-	private List<Edge> outEdgeList;
-	
-	private Queue<Message> messageList;
-	
+public class Vertex<VertexValue, MessageValue, EdgeValue> implements Comparable<Vertex> {
+
+	protected int id;
+
+	protected VertexValue value;
+
+	protected int supersteps;
+
+	protected List<Edge> outEdgeList;
+
+	protected Queue<Message> messageList;
+
+	public static int numVertices;
+
 	public Vertex(int id, VertexValue value) {
 		this.id = id;
 		this.value = value;
@@ -22,53 +24,61 @@ public class Vertex<VertexValue, MessageValue, EdgeValue> {
 		this.outEdgeList = new ArrayList<>();
 		this.messageList = new LinkedList<>();
 	}
-	
+
 	public int getVertex_id() {
 		return this.id;
 	}
-	
+
 	public VertexValue getValue() {
 		return this.value;
 	}
-	
-	public void setValue(VertexValue newValue){
+
+	public void setValue(VertexValue newValue) {
 		this.value = newValue;
 	}
-	
-	public void addSuperstep(){
+
+	public void addSuperstep() {
 		this.supersteps++;
 	}
-	
-	public int getSuperStep(){
+
+	public int getSuperStep() {
 		return this.supersteps;
 	}
-	
-	public void addOutEdge(Edge edge){
+
+	public void addOutEdge(Edge edge) {
 		this.outEdgeList.add(edge);
 	}
-	
-	public void addMessage(Message message){
+
+	public void addMessage(Message message) {
 		this.messageList.offer(message);
 	}
-	
 
-	
-	
-	// abstract methods
-	
-	public void sendMessageToNei(int target_vertex_id, MessageValue message_value){
-		
+	public void clearOutEdgeList() {
+		outEdgeList.clear();
 	}
 
+	public void clearMessageList() {
+		messageList.clear();
+	}
 
-	public boolean compute(){
+	// abstract methods
+
+	// public void sendMessageToNei(int target_vertex_id, MessageValue
+	// message_value){
+	//
+	// }
+
+	public boolean compute(List<String> workerIDList) {
 		return false;
 	}
-	
-	
-	
-//	public static void main(String[] args) {
-//	
-//	}
-	
+
+	@Override
+	public int compareTo(Vertex compareVertex) {
+		return 1;
+	}
+
+	// public static void main(String[] args) {
+	//
+	// }
+
 }

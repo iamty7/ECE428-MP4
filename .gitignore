@@ -30,3 +30,5 @@
 /Message.class
 /Vertex$1Test.class
 /MP4$PregelMessageThread.class
+/Client.class
+/Client$ResultReceiveThread.class

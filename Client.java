@@ -55,9 +55,16 @@ public class Client {
 			String[] command = keyboard.nextLine().split(" ");
 			if(command[0].equals("PageRank") || command[0].equals("SSSP")){
 				Socket socket;
+				ObjectOutputStream socket_out;
 				try {
 					socket = new Socket("fa17-cs425-g15-01.cs.illinois.edu", PREGEL_PORT);
-					ObjectOutputStream socket_out = new ObjectOutputStream(socket.getOutputStream());
+					socket_out = new ObjectOutputStream(socket.getOutputStream());
+					socket_out.writeObject(new Message("Start a task", command[0], command[1]));
+					socket_out.flush();
+					socket.close();
+					
+					socket = new Socket("fa17-cs425-g15-02.cs.illinois.edu", PREGEL_PORT);
+					socket_out = new ObjectOutputStream(socket.getOutputStream());
 					socket_out.writeObject(new Message("Start a task", command[0], command[1]));
 					socket_out.flush();
 					socket.close();

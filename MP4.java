@@ -43,7 +43,6 @@ import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
 
-
 /*
  * MP2 - Distributed Group Membership
  */
@@ -341,7 +340,7 @@ public class MP4 {
 		private List<String> workerIDList;
 		private int numResultsReceived;
 		private List<PageRankVertex> PGresults;
-		//private List<PageRankVertex> PGresults;
+		// private List<PageRankVertex> PGresults;
 		Message masterMessage;
 
 		@Override
@@ -351,41 +350,53 @@ public class MP4 {
 				ServerSocket server = new ServerSocket(PREGEL_PORT);
 
 				while (true) {
-					Socket socket = server.accept();
-					ObjectInputStream sin = new ObjectInputStream(socket.getInputStream());
-					Message message = (Message) sin.readObject();
-					switch (message.getMessageType()) {
-					case "Start a task":
-						masterMessage = message;
-						masterMessage.setMessageType("Start workers");
-						masterMessage.setMasterHostname(getHostName());
-						startTask();
-						break;
-					case "Start workers":
-						startWorkers(message);
-						break;
-					case "workerReport":
-						workerReport(message);
-						break;
-					case "nextRound":
-						nextRound(message);
-						break;
-					case "neighborMessage":
-						neighborMessage(message);
-						break;
-					case "result request":
-						dataToMaster();
-						break;
-					case "results":
-						mergeResults(message);
-						break;
-					default:
-						break;
+					try{
+						Socket socket = server.accept();
+						ObjectInputStream sin = new ObjectInputStream(socket.getInputStream());
+						Message message = (Message) sin.readObject();
+						if (!(getHostName().equals("fa17-cs425-g15-01.cs.illinois.edu")
+								|| getHostName().equals("fa17-cs425-g15-02.cs.illinois.edu"))) {
+							if (!message.getMessageType().equals("Start a task") && workerThread == null
+									&& !message.getMessageType().equals("Start workers"))
+								continue;
+						}
+						switch (message.getMessageType()) {
+						case "Start a task":
+							masterMessage = message;
+							masterMessage.setMessageType("Start workers");
+							masterMessage.setMasterHostname(getHostName());
+							if(getHostName().equals("fa17-cs425-g15-02.cs.illinois.edu"))
+								break;
+							startTask();
+							break;
+						case "Start workers":
+							startWorkers(message);
+							break;
+						case "workerReport":
+							workerReport(message);
+							break;
+						case "nextRound":
+							nextRound(message);
+							break;
+						case "neighborMessage":
+							neighborMessage(message);
+							break;
+						case "result request":
+							dataToMaster();
+							break;
+						case "results":
+							mergeResults(message);
+							break;
+						default:
+							break;
+						}
+	
+						socket.close();
+					}catch (Exception e) {
+						// TODO: handle exception
 					}
-
-					socket.close();
 				}
-			} catch (IOException | ClassNotFoundException e) {
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
@@ -393,12 +404,12 @@ public class MP4 {
 
 		private void mergeResults(Message message) {
 			System.out.println("===============results from worker received");
-			
+
 			PGresults.addAll(message.getData());
 
 			numResultsReceived++;
 			if (numResultsReceived == numWorkers) {
-				
+
 				System.out.println("=========All results received");
 				outputToClient();
 			}
@@ -411,7 +422,7 @@ public class MP4 {
 				try {
 					FileOutputStream fout = new FileOutputStream(new File("result.txt"));
 					PrintWriter dout = new PrintWriter(fout);
-					for(Vertex vertex:PGresults){
+					for (Vertex vertex : PGresults) {
 						dout.println(vertex.id + "  " + vertex.value);
 					}
 					fout.close();
@@ -420,13 +431,13 @@ public class MP4 {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				
-				
+
 				Collections.sort(PGresults);
 				sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu",
 						new Message("final results", new ArrayList<PageRankVertex>(PGresults.subList(0, 25))));
-			} else{
-				//sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu", new Message("final results", results));
+			} else {
+				// sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu", new
+				// Message("final results", results));
 			}
 		}
 
@@ -438,7 +449,7 @@ public class MP4 {
 			try {
 				FileOutputStream fout = new FileOutputStream(new File("result.txt"));
 				PrintWriter dout = new PrintWriter(fout);
-				for(Vertex vertex:vertexHashMap.values()){
+				for (Vertex vertex : vertexHashMap.values()) {
 					dout.println(vertex.id + "  " + vertex.value);
 				}
 				fout.close();
@@ -447,7 +458,7 @@ public class MP4 {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			
+
 			List<Vertex> data = new ArrayList<Vertex>();
 			for (Vertex vertex : vertexHashMap.values()) {
 				vertex.clearMessageList();
@@ -460,27 +471,29 @@ public class MP4 {
 		}
 
 		public void neighborMessage(Message message) {
-//			if (vertexHashMap.containsKey(message.getTargetVertexID())) {
-//				Vertex vertex = vertexHashMap.get(message.getTargetVertexID());
-//				vertex.addMessage(message);
-//			} else {
-//
-//				Vertex vertex = null;
-//				
-//				
-//				if (masterMessage.getApp().equals("PageRank"))
-//					vertex = new PageRankVertex(message.getTargetVertexID(), 1.0 / Vertex.numVertices);
-//				
-//				else if (masterMessage.getApp().equals("SSSP")) {
-//					// !!! vertex = new SSSPVertex(message.getTargetVertexID(),
-//					// 0.0);
-//				}
-//				vertex.supersteps = message.getSuperstep() - 1;
-//				vertex.addMessage(message);
-//				vertexHashMap.put(message.getTargetVertexID(), vertex);
-//			}
+			// if (vertexHashMap.containsKey(message.getTargetVertexID())) {
+			// Vertex vertex = vertexHashMap.get(message.getTargetVertexID());
+			// vertex.addMessage(message);
+			// } else {
+			//
+			// Vertex vertex = null;
+			//
+			//
+			// if (masterMessage.getApp().equals("PageRank"))
+			// vertex = new PageRankVertex(message.getTargetVertexID(), 1.0 /
+			// Vertex.numVertices);
+			//
+			// else if (masterMessage.getApp().equals("SSSP")) {
+			// // !!! vertex = new SSSPVertex(message.getTargetVertexID(),
+			// // 0.0);
+			// }
+			// vertex.supersteps = message.getSuperstep() - 1;
+			// vertex.addMessage(message);
+			// vertexHashMap.put(message.getTargetVertexID(), vertex);
+			// }
 			Vertex vertex = vertexHashMap.get(message.getTargetVertexID());
-			vertex.addMessage(message);
+			if (vertex != null)
+				vertex.addMessage(message);
 
 		}
 
@@ -491,7 +504,7 @@ public class MP4 {
 		}
 
 		public void workerReport(Message message) {
-			
+
 			System.out.println("==============worker report received");
 			reportCnt++;
 			if (!message.getChangedStatus())
@@ -532,6 +545,13 @@ public class MP4 {
 			numResultsReceived = 0;
 			workerIDList = new ArrayList<String>();
 			PGresults = new ArrayList<PageRankVertex>();
+
+			try {
+				Thread.currentThread().sleep(1000);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+
 			System.out.println("========sending start worker command");
 			synchronized (membershipList) {
 				for (Node node : membershipList) {
@@ -601,7 +621,7 @@ public class MP4 {
 			readFile("Input" + message.getFilename());
 			if (stop)
 				return;
-			
+
 			while (!stop) {
 
 				try {
@@ -612,22 +632,22 @@ public class MP4 {
 				synchronized (vertexHashMap) {
 					int i = 0;
 					for (Vertex vertex : vertexHashMap.values()) {
-						
+
 						if (vertex.compute(workerIDList))
 							changed = true;
 						if (stop)
 							return;
-						
-						if(i==0)
+
+						if (i == 0)
 							System.out.println(vertex.id + "\t" + vertex.value);
 						i++;
 					}
 				}
-			
+
 				System.out.println("========sending report to master");
 				sendMessageTo(message.getMasterHostname(), new Message("workerReport", changed));
 				changed = false;
-				
+
 				try {
 					Thread.currentThread().sleep(Long.MAX_VALUE);
 				} catch (InterruptedException e) {
@@ -655,7 +675,7 @@ public class MP4 {
 
 		// read input data into vertex hashmap
 		public void readFile(String filename) {
-			
+
 			System.out.println("========Worker starting reading file");
 			try {
 				Vertex.numVertices = message.getNumVertices();
@@ -694,7 +714,7 @@ public class MP4 {
 							vertexHashMap.put(nextID, vertex);
 						}
 					}
-					
+
 					if (stop)
 						return;
 				}
@@ -702,10 +722,9 @@ public class MP4 {
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 			}
-			
+
 			System.out.println("========Worker reading file complete");
 		}
-
 
 	}
 
@@ -1189,7 +1208,7 @@ public class MP4 {
 		messageHandlerThread = new Thread(new MessageHandlerThread());
 		failureDetectorThread = new Thread(new FailureDetectorThread());
 		fileTransferThread = new Thread(new FileTransferThread());
-		pregelMessageThread = new Thread(new PregelMessageThread());
+		pregelMessageThread = new PregelMessageThread();
 		workerThread = null;
 		vertexHashMap = new ConcurrentHashMap<Integer, Vertex>();
 

@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -44,8 +45,10 @@ public class PageRankVertex extends Vertex<Double, Double, Void>  implements Ser
 					sout.close();
 				} catch (UnknownHostException e) {
 					e.printStackTrace();
+					return changed;
 				} catch (IOException e) {
 					e.printStackTrace();
+					return changed;
 				}
 			}
 		}

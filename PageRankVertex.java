@@ -29,7 +29,7 @@ public class PageRankVertex extends Vertex<Double, Double, Void>  implements Ser
 				}
 			}
 			if(changed)
-				value = 0.15 / Vertex.numVertices + 0.85 * sum;
+				value = 0.15 + 0.85 * sum;
 
 		}
 		if (supersteps < 10) {

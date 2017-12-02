@@ -39,6 +39,7 @@ public class Client {
 	public static void main(String[] args) {
 
 		PageRankVertex pageRankVertex;
+		SSSPVertex ssspVertex;
 		
 		Client client = new Client();
 		client.run();

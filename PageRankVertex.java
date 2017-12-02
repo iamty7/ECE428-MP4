@@ -7,7 +7,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.List;
 
-public class PageRankVertex extends Vertex<Double, Double, Void>  implements Serializable, Comparable<PageRankVertex>{
+public class PageRankVertex extends Vertex<Double, Double, Void> implements Serializable, Comparable<PageRankVertex> {
 
 	public PageRankVertex(int vertex_id, Double vertex_value) {
 		super(vertex_id, vertex_value);
@@ -29,11 +29,11 @@ public class PageRankVertex extends Vertex<Double, Double, Void>  implements Ser
 					messageList.poll();
 				}
 			}
-			if(changed)
+			if (changed)
 				value = 0.15 + 0.85 * sum;
 
 		}
-		if (supersteps < 10) {
+		if (supersteps < 20) {
 			int n = outEdgeList.size();
 			for (Edge edge : outEdgeList) {
 				try {
@@ -54,22 +54,20 @@ public class PageRankVertex extends Vertex<Double, Double, Void>  implements Ser
 		}
 		supersteps++;
 
-		if(supersteps==1)
+		if (supersteps == 1)
 			return true;
 		return changed;
 
 	}
-
-
 
 	@Override
 	public int compareTo(PageRankVertex o) {
 
 		double compareValue = o.value;
 
-		if(value < compareValue)
+		if (value < compareValue)
 			return 1;
-		else if(value > compareValue)
+		else if (value > compareValue)
 			return -1;
 		else
 			return 0;

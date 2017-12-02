@@ -73,12 +73,11 @@ public class Vertex<VertexValue, MessageValue, EdgeValue> implements Serializabl
 		return false;
 	}
 
-
-//	@Override
-//	public int compareTo(Object o) {
-//		
-//		return 0;
-//	}
+	// @Override
+	// public int compareTo(Object o) {
+	//
+	// return 0;
+	// }
 
 	// public static void main(String[] args) {
 	//

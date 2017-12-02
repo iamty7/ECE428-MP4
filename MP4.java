@@ -339,8 +339,8 @@ public class MP4 {
 		private int notChangedCnt;
 		private List<String> workerIDList;
 		private int numResultsReceived;
-		private List<PageRankVertex> PGresults;
-		// private List<PageRankVertex> PGresults;
+		private List<PageRankVertex> PRresults;
+		private List<SSSPVertex> SSSPresults;
 		Message masterMessage;
 
 		@Override
@@ -350,7 +350,7 @@ public class MP4 {
 				ServerSocket server = new ServerSocket(PREGEL_PORT);
 
 				while (true) {
-					try{
+					try {
 						Socket socket = server.accept();
 						ObjectInputStream sin = new ObjectInputStream(socket.getInputStream());
 						Message message = (Message) sin.readObject();
@@ -365,7 +365,7 @@ public class MP4 {
 							masterMessage = message;
 							masterMessage.setMessageType("Start workers");
 							masterMessage.setMasterHostname(getHostName());
-							if(getHostName().equals("fa17-cs425-g15-02.cs.illinois.edu"))
+							if (getHostName().equals("fa17-cs425-g15-02.cs.illinois.edu"))
 								break;
 							startTask();
 							break;
@@ -390,9 +390,9 @@ public class MP4 {
 						default:
 							break;
 						}
-	
+
 						socket.close();
-					}catch (Exception e) {
+					} catch (Exception e) {
 						// TODO: handle exception
 					}
 				}
@@ -405,7 +405,10 @@ public class MP4 {
 		private void mergeResults(Message message) {
 			System.out.println("===============results from worker received");
 
-			PGresults.addAll(message.getData());
+			if (masterMessage.getApp().equals("PageRank"))
+				PRresults.addAll(message.getData());
+			else
+				SSSPresults.addAll(message.getData());
 
 			numResultsReceived++;
 			if (numResultsReceived == numWorkers) {
@@ -416,28 +419,28 @@ public class MP4 {
 		}
 
 		private void outputToClient() {
-
-			if (masterMessage.getApp().equals("PageRank")) {
-
-				try {
-					FileOutputStream fout = new FileOutputStream(new File("result.txt"));
-					PrintWriter dout = new PrintWriter(fout);
-					for (Vertex vertex : PGresults) {
-						dout.println(vertex.id + "  " + vertex.value);
-					}
-					fout.close();
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
+			Collections.sort(SSSPresults);
+			Collections.sort(PRresults);
+			try {
+				FileOutputStream fout = new FileOutputStream(new File("result.txt"));
+				PrintWriter dout = new PrintWriter(fout);
+				for (Vertex vertex : masterMessage.getApp().equals("PageRank") ? PRresults : SSSPresults) {
+					dout.println(vertex.id + "\t" + vertex.value);
 				}
-
-				Collections.sort(PGresults);
+				fout.close();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			if (masterMessage.getApp().equals("PageRank")) {
+				
 				sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu",
-						new Message("final results", new ArrayList<PageRankVertex>(PGresults.subList(0, 25))));
+						new Message("final results", new ArrayList<PageRankVertex>(PRresults.subList(0, 25))));
 			} else {
-				// sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu", new
-				// Message("final results", results));
+				
+				sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu", new Message("final results", SSSPresults));
+
 			}
 		}
 
@@ -450,7 +453,7 @@ public class MP4 {
 				FileOutputStream fout = new FileOutputStream(new File("result.txt"));
 				PrintWriter dout = new PrintWriter(fout);
 				for (Vertex vertex : vertexHashMap.values()) {
-					dout.println(vertex.id + "  " + vertex.value);
+					dout.println(vertex.id + "\t" + vertex.value);
 				}
 				fout.close();
 			} catch (FileNotFoundException e) {
@@ -544,8 +547,8 @@ public class MP4 {
 			notChangedCnt = 0;
 			numResultsReceived = 0;
 			workerIDList = new ArrayList<String>();
-			PGresults = new ArrayList<PageRankVertex>();
-
+			PRresults = new ArrayList<PageRankVertex>();
+			SSSPresults = new ArrayList<SSSPVertex>();
 			try {
 				Thread.currentThread().sleep(1000);
 			} catch (InterruptedException e1) {
@@ -688,16 +691,23 @@ public class MP4 {
 
 							Vertex vertex = null;
 
-							if (message.getApp().equals("PageRank"))
+							if (message.getApp().equals("PageRank")) {
 								vertex = new PageRankVertex(vertexID, 1.0);
-							else if (message.getApp().equals("SSSP")) {
-								// !!! vertex = new SSSPVertex(vertexID, 0.0);
+								vertex.addOutEdge(new Edge(nextID));
+							} else if (message.getApp().equals("SSSP")) {
+								vertex = new SSSPVertex(vertexID, Integer.MAX_VALUE);
+								vertex.addOutEdge(new Edge(nextID, 1));
 							}
-							vertex.addOutEdge(new Edge(nextID));
+
 							vertexHashMap.put(vertexID, vertex);
 						} else {
 							Vertex vertex = vertexHashMap.get(vertexID);
-							vertex.addOutEdge(new Edge(nextID));
+
+							if (message.getApp().equals("PageRank"))
+								vertex.addOutEdge(new Edge(nextID));
+							else if (message.getApp().equals("SSSP")) {
+								vertex.addOutEdge(new Edge(nextID, 1));
+							}
 						}
 
 					}
@@ -709,7 +719,7 @@ public class MP4 {
 							if (message.getApp().equals("PageRank"))
 								vertex = new PageRankVertex(nextID, 1.0);
 							else if (message.getApp().equals("SSSP")) {
-								// !!! vertex = new SSSPVertex(nextID, 0.0);
+								vertex = new SSSPVertex(nextID, Integer.MAX_VALUE);
 							}
 							vertexHashMap.put(nextID, vertex);
 						}

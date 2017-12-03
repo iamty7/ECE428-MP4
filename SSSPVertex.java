@@ -27,8 +27,13 @@ public class SSSPVertex extends Vertex<Integer, Integer, Integer> implements Ser
 		while (true) {
 			synchronized (messageList) {
 				message = messageList.peek();
-				if (message == null || message.getSuperstep() != supersteps)
+				if (message == null || message.getSuperstep() > supersteps)
 					break;
+				else if(message.getSuperstep() < supersteps){
+					System.out.println("===========message delayed!!!");
+					messageList.poll();
+					continue;
+				}
 				minDist = Math.min(minDist, message.getValue());
 				changed = true;
 				messageList.poll();

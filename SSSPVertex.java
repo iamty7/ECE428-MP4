@@ -4,6 +4,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.LinkedList;
 import java.util.List;
 
 public class SSSPVertex extends Vertex<Integer, Integer, Integer> implements Serializable, Comparable<SSSPVertex> {
@@ -19,7 +20,7 @@ public class SSSPVertex extends Vertex<Integer, Integer, Integer> implements Ser
 	}
 
 	@Override
-	public boolean compute(List<String> workerIDList) {
+	public boolean compute(List<String> workerIDList, List<LinkedList<Message>> messageBuffer) {
 
 		boolean changed = false;
 		int minDist = getVertex_id() == 1 ? 0 : Integer.MAX_VALUE;
@@ -29,7 +30,7 @@ public class SSSPVertex extends Vertex<Integer, Integer, Integer> implements Ser
 				message = messageList.peek();
 				if (message == null || message.getSuperstep() > supersteps)
 					break;
-				else if(message.getSuperstep() < supersteps){
+				else if (message.getSuperstep() < supersteps) {
 					System.out.println("===========message delayed!!!");
 					messageList.poll();
 					continue;

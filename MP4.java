@@ -434,11 +434,11 @@ public class MP4 {
 				e.printStackTrace();
 			}
 			if (masterMessage.getApp().equals("PageRank")) {
-				
+
 				sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu",
 						new Message("final results", new ArrayList<PageRankVertex>(PRresults.subList(0, 25))));
 			} else {
-				
+
 				sendMessageTo("fa17-cs425-g15-10.cs.illinois.edu", new Message("final results", SSSPresults));
 
 			}
@@ -494,9 +494,12 @@ public class MP4 {
 			// vertex.addMessage(message);
 			// vertexHashMap.put(message.getTargetVertexID(), vertex);
 			// }
-			Vertex vertex = vertexHashMap.get(message.getTargetVertexID());
-			if (vertex != null)
-				vertex.addMessage(message);
+			List<Message> list = message.getData();
+			for (Message m : list) {
+				Vertex vertex = vertexHashMap.get(m.getTargetVertexID());
+				if (vertex != null)
+					vertex.addMessage(m);
+			}
 
 		}
 
@@ -530,12 +533,21 @@ public class MP4 {
 		}
 
 		public void startWorkers(Message message) {
+
+			System.out.println("==========startWorker received!");
 			if (workerThread != null) {
+				System.out.println("workerThread  not null");
 				((WorkerThread) workerThread).setStop(true);
 				workerThread.interrupt();
 			}
 			masterMessage = message;
 			workerThread = new WorkerThread(message);
+
+			try {
+				Thread.currentThread().sleep(500);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
 			vertexHashMap.clear();
 			workerThread.start();
 
@@ -549,13 +561,15 @@ public class MP4 {
 			workerIDList = new ArrayList<String>();
 			PRresults = new ArrayList<PageRankVertex>();
 			SSSPresults = new ArrayList<SSSPVertex>();
-			try {
-				Thread.currentThread().sleep(1000);
-			} catch (InterruptedException e1) {
-				e1.printStackTrace();
+
+			if (getName().equals("")) {
+				try {
+					Thread.currentThread().sleep(1000);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
 			}
 
-			System.out.println("========sending start worker command");
 			synchronized (membershipList) {
 				for (Node node : membershipList) {
 					if (node != null) {
@@ -568,7 +582,6 @@ public class MP4 {
 					}
 				}
 			}
-			System.out.println("========sending start worker command compelete");
 
 			getFile(masterMessage.getFilename(), "Input" + masterMessage.getFilename());
 			HashSet<Integer> IDSet = new HashSet<>();
@@ -586,9 +599,11 @@ public class MP4 {
 				e.printStackTrace();
 			}
 
+			System.out.println("========sending start worker command");
 			for (String dest : workerIDList) {
 				sendMessageTo(dest, masterMessage);
 			}
+			System.out.println("========sending start worker command compelete");
 
 		}
 
@@ -599,14 +614,22 @@ public class MP4 {
 		private Message message;
 		private List<String> workerIDList;
 		private int numWorker;
-		private boolean changed = false;
+		private boolean changed;
+		private List<LinkedList<Message>> messageBuffer;
 
 		public WorkerThread(Message message) {
 			super();
 			this.message = message;
 			stop = false;
+			changed = false;
 			workerIDList = new ArrayList<String>();
 			numWorker = 0;
+			messageBuffer = new ArrayList<LinkedList<Message>>();
+			System.out.println("============starting to initialize message buffer");
+			for (int i = 0; i < 7; i++) {
+				LinkedList<Message> list = new LinkedList<Message>();
+				messageBuffer.add(list);
+			}
 
 		}
 
@@ -617,6 +640,8 @@ public class MP4 {
 		@Override
 		public void run() {
 
+			System.out.println("=========Worker started!!!");
+
 			getFile(message.getFilename(), "Input" + message.getFilename());
 			if (stop)
 				return;
@@ -625,26 +650,35 @@ public class MP4 {
 			if (stop)
 				return;
 
-			System.out.println("=============Loading Complete!!!! " + new Timestamp(System.currentTimeMillis()).toString());
+			System.out.println(
+					"=============Loading Complete!!!! " + new Timestamp(System.currentTimeMillis()).toString());
 			while (!stop) {
 
-				try {
-					Thread.currentThread().sleep(500);
-				} catch (InterruptedException e1) {
-					e1.printStackTrace();
+				for (int i = 0; i < 7; i++) {
+					messageBuffer.get(i).clear();
 				}
+
 				synchronized (vertexHashMap) {
-	
+
 					for (Vertex vertex : vertexHashMap.values()) {
 
-						if (vertex.compute(workerIDList))
+						if (vertex.compute(workerIDList, messageBuffer))
 							changed = true;
 						if (stop)
 							return;
 					}
 				}
 
+				System.out.println("===========computation compelete!!!");
+
+				for (int i = 0; i < 7; i++) {
+					LinkedList<Message> list = messageBuffer.get(i);
+					if (list.size() != 0)
+						sendMessageTo(workerIDList.get(i), new Message("neighborMessage", list));
+				}
+
 				System.out.println("========sending report to master");
+
 				sendMessageTo(message.getMasterHostname(), new Message("workerReport", changed));
 				changed = false;
 
@@ -1355,7 +1389,7 @@ public class MP4 {
 					if (list.get(i).addr.equals(hostName))
 						break;
 				}
-				if (i < 3 && fileRecords.get(filename).size() > 0)
+				if (i < list.size() && fileRecords.get(filename).size() > 0)
 					list.remove(i);
 			}
 		}

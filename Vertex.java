@@ -69,7 +69,7 @@ public class Vertex<VertexValue, MessageValue, EdgeValue> implements Serializabl
 	//
 	// }
 
-	public boolean compute(List<String> workerIDList) {
+	public boolean compute(List<String> workerIDList, List<LinkedList<Message>> messageBuffer) {
 		return false;
 	}
 

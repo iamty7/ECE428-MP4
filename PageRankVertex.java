@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.net.ConnectException;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.LinkedList;
 import java.util.List;
 
 public class PageRankVertex extends Vertex<Double, Double, Void> implements Serializable, Comparable<PageRankVertex> {
@@ -14,7 +15,7 @@ public class PageRankVertex extends Vertex<Double, Double, Void> implements Seri
 	}
 
 	@Override
-	public boolean compute(List<String> workerIDList) {
+	public boolean compute(List<String> workerIDList, List<LinkedList<Message>> messageBuffer) {
 		boolean changed = false;
 		if (supersteps >= 1 && supersteps < 20) {
 			Message<Double> message;
@@ -24,7 +25,7 @@ public class PageRankVertex extends Vertex<Double, Double, Void> implements Seri
 					message = messageList.peek();
 					if (message == null || message.getSuperstep() > supersteps)
 						break;
-					else if(message.getSuperstep() < supersteps){
+					else if (message.getSuperstep() < supersteps) {
 						System.out.println("===========message delayed!!!");
 						messageList.poll();
 						continue;
@@ -40,20 +41,26 @@ public class PageRankVertex extends Vertex<Double, Double, Void> implements Seri
 		if (supersteps < 20) {
 			int n = outEdgeList.size();
 			for (Edge edge : outEdgeList) {
-				try {
-					Socket socket = new Socket(workerIDList.get(edge.getTarget() % workerIDList.size()), 9000);
-					ObjectOutput sout = new ObjectOutputStream(socket.getOutputStream());
-					sout.writeObject(
-							new Message<Double>("neighborMessage", value / n, edge.getTarget(), supersteps + 1));
-					sout.flush();
-					sout.close();
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-					return changed;
-				} catch (IOException e) {
-					e.printStackTrace();
-					return changed;
-				}
+				messageBuffer.get(edge.getTarget() % workerIDList.size())
+						.add(new Message<Double>("neighborMessage", value / n, edge.getTarget(), supersteps + 1));
+				// try {
+				//
+				// Socket socket = new Socket(workerIDList.get(edge.getTarget()
+				// % workerIDList.size()), 9000);
+				// ObjectOutput sout = new
+				// ObjectOutputStream(socket.getOutputStream());
+				// sout.writeObject(
+				// new Message<Double>("neighborMessage", value / n,
+				// edge.getTarget(), supersteps + 1));
+				// sout.flush();
+				// sout.close();
+				// } catch (UnknownHostException e) {
+				// e.printStackTrace();
+				// return changed;
+				// } catch (IOException e) {
+				// e.printStackTrace();
+				// return changed;
+				// }
 			}
 		}
 		supersteps++;

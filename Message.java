@@ -11,7 +11,7 @@ public class Message<MessageValue> implements Serializable {
 	private String filename;
 	private String masterHostname;
 	private boolean changed;
-	private List<Vertex> data;
+	private List data;
 	private int numVertices;
 
 	// next round, result request
@@ -41,7 +41,7 @@ public class Message<MessageValue> implements Serializable {
 	}
 
 	// results
-	public Message(String messageType, List<Vertex> data) {
+	public Message(String messageType, List data) {
 		this.messageType = messageType;
 		this.data = data;
 	}

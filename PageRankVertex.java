@@ -16,21 +16,25 @@ public class PageRankVertex extends Vertex<Double, Double, Void> implements Seri
 	@Override
 	public boolean compute(List<String> workerIDList) {
 		boolean changed = false;
-		if (supersteps >= 1 && supersteps < 10) {
+		if (supersteps >= 1 && supersteps < 20) {
 			Message<Double> message;
 			double sum = 0.0;
 			while (true) {
 				synchronized (messageList) {
 					message = messageList.peek();
-					if (message == null || message.getSuperstep() != supersteps)
+					if (message == null || message.getSuperstep() > supersteps)
 						break;
+					else if(message.getSuperstep() < supersteps){
+						System.out.println("===========message delayed!!!");
+						messageList.poll();
+						continue;
+					}
 					sum += message.getValue();
 					changed = true;
 					messageList.poll();
 				}
 			}
-			if (changed)
-				value = 0.15 + 0.85 * sum;
+			value = 0.15 + 0.85 * sum;
 
 		}
 		if (supersteps < 20) {

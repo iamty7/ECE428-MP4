@@ -625,6 +625,7 @@ public class MP4 {
 			if (stop)
 				return;
 
+			System.out.println("=============Loading Complete!!!! " + new Timestamp(System.currentTimeMillis()).toString());
 			while (!stop) {
 
 				try {
@@ -633,17 +634,13 @@ public class MP4 {
 					e1.printStackTrace();
 				}
 				synchronized (vertexHashMap) {
-					int i = 0;
+	
 					for (Vertex vertex : vertexHashMap.values()) {
 
 						if (vertex.compute(workerIDList))
 							changed = true;
 						if (stop)
 							return;
-
-						if (i == 0)
-							System.out.println(vertex.id + "\t" + vertex.value);
-						i++;
 					}
 				}
 

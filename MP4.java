@@ -403,7 +403,8 @@ public class MP4 {
 		}
 
 		private void mergeResults(Message message) {
-			System.out.println("===============results from worker received");
+			System.out.println("===============results from worker received"
+					+ new Timestamp(System.currentTimeMillis()).toString());
 
 			if (masterMessage.getApp().equals("PageRank"))
 				PRresults.addAll(message.getData());
@@ -419,6 +420,7 @@ public class MP4 {
 		}
 
 		private void outputToClient() {
+
 			Collections.sort(SSSPresults);
 			Collections.sort(PRresults);
 			try {
@@ -449,18 +451,19 @@ public class MP4 {
 			workerThread.interrupt();
 			workerThread = null;
 
-			try {
-				FileOutputStream fout = new FileOutputStream(new File("result.txt"));
-				PrintWriter dout = new PrintWriter(fout);
-				for (Vertex vertex : vertexHashMap.values()) {
-					dout.println(vertex.id + "\t" + vertex.value);
-				}
-				fout.close();
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			// try {
+			// FileOutputStream fout = new FileOutputStream(new
+			// File("result.txt"));
+			// PrintWriter dout = new PrintWriter(fout);
+			// for (Vertex vertex : vertexHashMap.values()) {
+			// dout.println(vertex.id + "\t" + vertex.value);
+			// }
+			// fout.close();
+			// } catch (FileNotFoundException e) {
+			// e.printStackTrace();
+			// } catch (IOException e) {
+			// e.printStackTrace();
+			// }
 
 			List<Vertex> data = new ArrayList<Vertex>();
 			for (Vertex vertex : vertexHashMap.values()) {

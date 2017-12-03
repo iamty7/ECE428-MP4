@@ -44,20 +44,26 @@ public class SSSPVertex extends Vertex<Integer, Integer, Integer> implements Ser
 		if (minDist < getValue()) {
 			setValue(minDist);
 			for (Edge edge : outEdgeList) {
-				try {
-					Socket socket = new Socket(workerIDList.get(edge.getTarget() % workerIDList.size()), 9000);
-					ObjectOutput sout = new ObjectOutputStream(socket.getOutputStream());
-					sout.writeObject(new Message<Integer>("neighborMessage", ((Integer) edge.getValue()) + minDist,
-							edge.getTarget(), supersteps + 1));
-					sout.flush();
-					sout.close();
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-					return changed;
-				} catch (IOException e) {
-					e.printStackTrace();
-					return changed;
-				}
+				messageBuffer.get(edge.getTarget() % workerIDList.size()).add(new Message<Integer>("neighborMessage",
+						((Integer) edge.getValue()) + minDist, edge.getTarget(), supersteps + 1));
+
+				// try {
+				// Socket socket = new Socket(workerIDList.get(edge.getTarget()
+				// % workerIDList.size()), 9000);
+				// ObjectOutput sout = new
+				// ObjectOutputStream(socket.getOutputStream());
+				// sout.writeObject(new Message<Integer>("neighborMessage",
+				// ((Integer) edge.getValue()) + minDist,
+				// edge.getTarget(), supersteps + 1));
+				// sout.flush();
+				// sout.close();
+				// } catch (UnknownHostException e) {
+				// e.printStackTrace();
+				// return changed;
+				// } catch (IOException e) {
+				// e.printStackTrace();
+				// return changed;
+				// }
 			}
 		}
 
